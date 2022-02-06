@@ -10,7 +10,10 @@ public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+                if (MACOS) {
+                    System.setProperty("apple.laf.useScreenMenuBar", "true");
+                    UIManager.setLookAndFeel("com.apple.laf.AquaLookAndFeel");
+                }
             } catch (Exception ignored) {
             }
 

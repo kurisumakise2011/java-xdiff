@@ -166,6 +166,7 @@ public class DifferenceSwingComponent extends JFrame {
         JEditorPane editorPane = new JEditorPane();
         editorPane.setText("<h3>Content of the file will shown here ... </h3>");
         editorPane.setEditable(false);
+        editorPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
 
         JScrollPane scrollPane = new JScrollPane(editorPane);
