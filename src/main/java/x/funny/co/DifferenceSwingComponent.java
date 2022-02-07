@@ -166,8 +166,8 @@ public class DifferenceSwingComponent extends JFrame {
     }
 
     private Container differenceContentPane(DifferenceBetweenBlobs model, File[] selectedFiles) {
-        JComponent left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[1]);
-        JComponent right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[0]);
+        JComponent left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[0]);
+        JComponent right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[1]);
         JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         main.setResizeWeight(0.5f);
         main.setOneTouchExpandable(false);
