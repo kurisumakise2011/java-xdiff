@@ -8,9 +8,13 @@ import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 
 import static x.funny.co.Main.MACOS;
 
@@ -27,6 +31,8 @@ public class DifferenceSwingComponent extends JFrame {
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To open files to compare please click $_c + O, and then using $_s, select two files.</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To find the difference of contents, click $_c + D</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To enable editing, click $_c + E</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To go next difference, click N</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To go previous difference, click P</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To close files, click $_c + C</p>" +
 //            "<p style=\"margin-top: 20px;\">Or just simply choose them one by one below</p>" +
             "</body></html>";
@@ -178,12 +184,38 @@ public class DifferenceSwingComponent extends JFrame {
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         textPane.setDocument(doc);
 
+
         JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
+        Blob blob = new Blob(selectedFile, textPane);
 
-        model.appendFile(new Blob(selectedFile, textPane), constraint);
+        model.appendFile(blob, constraint);
+
+        textPane.addKeyListener(new KeyAdapter() {
+            int position = 0;
+            List<Integer> iterator = blob.getDiffPositions();
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_N) {
+                    if (position < iterator.size() - 1) {
+                        position++;
+                        textPane.setCaretPosition(iterator.get(position));
+                    }
+
+                }
+                if (e.getKeyCode() == KeyEvent.VK_P) {
+                    if (position > 0) {
+                        position--;
+                        textPane.setCaretPosition(iterator.get(position));
+                    }
+
+                }
+            }
+        });
+
         return scrollPane;
     }
 

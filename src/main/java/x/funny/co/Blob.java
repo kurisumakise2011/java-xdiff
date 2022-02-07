@@ -2,13 +2,13 @@ package x.funny.co;
 
 import javax.swing.*;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.ListIterator;
 
 public class Blob {
     private final File file;
     private final JTextPane content;
-    private final LinkedList<Integer> diffPositions = new LinkedList<>();
+    private final ArrayList<Integer> diffPositions = new ArrayList<>();
 
     public Blob(File file, JTextPane content) {
         this.file = file;
@@ -28,10 +28,10 @@ public class Blob {
     }
 
     public Integer peek() {
-        return diffPositions.peek();
+        return diffPositions.size() == 0 ? null : diffPositions.get(0);
     }
 
-    public ListIterator<Integer> listIterator(int index) {
-        return diffPositions.listIterator(index);
+    public ArrayList<Integer> getDiffPositions() {
+        return diffPositions;
     }
 }
