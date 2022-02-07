@@ -3,9 +3,9 @@ package x.funny.co;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.text.DefaultStyledDocument;
+import javax.swing.text.StyledDocument;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
@@ -15,17 +15,19 @@ import java.io.IOException;
 import static x.funny.co.Main.MACOS;
 
 public class DifferenceSwingComponent extends JFrame {
+    private static final int MB_1 = 1024 * 1024 * 1024;
     private static final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
     private static final Dimension buttonSize = dim(screenSize.width / 8f, screenSize.height / 8f);
     String selector = MACOS ? "Control" : "Ctrl";
     String multiple = MACOS ? "Command" : "Alt";
-    private static final String WELCOME_HTML = "<html><body style=\"color: #444; font-weight: lighter;font-size: 14px;\">" +
-            "<p style=\"margin-bottom: 20px;\">Use menu tab or hotkeys below</p>" +
-            "<p style=\"margin-bottom: 20px;\">Useful hotkeys</p>" +
-            "<p>To open files to compare please click $_c + O, and then using $_s, select two files.</p>" +
-            "<p>To find the difference of contents, click $_c + D</p>" +
-            "<p>To enable editing, click $_c + E</p>" +
-            "<p>To close files, click $_c + C</p>" +
+    private static final String WELCOME_HTML = "<html><body style=\"color: #000; font-weight: lighter;font-size: 14px;\">" +
+            "<p style=\"margin-bottom: 40px;font-size: 28px;\">Welcome</p>" +
+            "<p style=\"margin-bottom: 20px;font-size: 14px;\">Use menu tab or hotkeys below</p>" +
+            "<p style=\"margin-bottom: 20px;font-size: 14px;\">Useful hotkeys</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To open files to compare please click $_c + O, and then using $_s, select two files.</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To find the difference of contents, click $_c + D</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To enable editing, click $_c + E</p>" +
+            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To close files, click $_c + C</p>" +
 //            "<p style=\"margin-top: 20px;\">Or just simply choose them one by one below</p>" +
             "</body></html>";
 
@@ -34,9 +36,7 @@ public class DifferenceSwingComponent extends JFrame {
     private DifferenceBetweenBlobs current;
 
     private static final ImageIcon icon = getIcon("/icon/add-icon-png.png");
-    Border hoverButtonAnchorBorder = BorderFactory.createLineBorder(Color.decode("#ACCEF7"), 30);
-    Border buttonAnchorBorder = BorderFactory.createLineBorder(Color.WHITE, 30);
-    Border labelTopPadding = BorderFactory.createEmptyBorder(screenSize.height / 6, 0, 0, 0);
+    private final Border labelTopPadding = BorderFactory.createEmptyBorder(screenSize.height / 6, 0, 0, 0);
     private JMenuItem openFiles;
     private JMenuItem closeFiles;
     private JMenuItem diffFiles;
@@ -106,11 +106,17 @@ public class DifferenceSwingComponent extends JFrame {
             fileChooser.setMultiSelectionEnabled(true);
             int code = fileChooser.showOpenDialog(this);
             File[] selectedFiles = fileChooser.getSelectedFiles();
+            if (selectedFiles[0].length() > MB_1) {
+                throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
+            }
+            if (selectedFiles[1].length() > MB_1) {
+                throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
+            }
 
             if (code == JFileChooser.APPROVE_OPTION && selectedFiles.length == 2) {
                 setContentPane(differenceContentPane(model, selectedFiles));
                 current = model;
-                current.show();
+                current.findDiff();
                 validate();
                 repaint();
 
@@ -163,18 +169,21 @@ public class DifferenceSwingComponent extends JFrame {
     }
 
     private JComponent buildDifferencePanel(DifferenceBetweenBlobs model, String constraint, File selectedFile) {
-        JEditorPane editorPane = new JEditorPane();
-        editorPane.setText("<h3>Content of the file will shown here ... </h3>");
-        editorPane.setEditable(false);
-        editorPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        StyledDocument doc = new DefaultStyledDocument();
+        doc.addDocumentListener(new DefaultDocumentListener());
 
+        JTextPane textPane = new JTextPane();
+        textPane.setText("Content of the file will shown here ... ");
+        textPane.setEditable(false);
+        textPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        textPane.setDocument(doc);
 
-        JScrollPane scrollPane = new JScrollPane(editorPane);
+        JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
 
-        model.appendFile(new Blob(selectedFile, editorPane), constraint);
+        model.appendFile(new Blob(selectedFile, textPane), constraint);
         return scrollPane;
     }
 
