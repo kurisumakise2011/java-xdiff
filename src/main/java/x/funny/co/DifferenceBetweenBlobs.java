@@ -106,7 +106,11 @@ public class DifferenceBetweenBlobs {
     }
 
     private void getPosition(Blob blob) {
-        blob.getContent().setCaretPosition(blob.peek());
+        if (blob.peek() != null) {
+            blob.getContent().setCaretPosition(blob.peek());
+        } else {
+            blob.getContent().setCaretPosition(0);
+        }
     }
 
     public boolean canBeCompared() {

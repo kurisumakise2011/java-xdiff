@@ -106,14 +106,14 @@ public class DifferenceSwingComponent extends JFrame {
             fileChooser.setMultiSelectionEnabled(true);
             int code = fileChooser.showOpenDialog(this);
             File[] selectedFiles = fileChooser.getSelectedFiles();
-            if (selectedFiles[0].length() > MB_1) {
-                throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
-            }
-            if (selectedFiles[1].length() > MB_1) {
-                throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
-            }
 
             if (code == JFileChooser.APPROVE_OPTION && selectedFiles.length == 2) {
+                if (selectedFiles[0].length() > MB_1) {
+                    throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
+                }
+                if (selectedFiles[1].length() > MB_1) {
+                    throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
+                }
                 setContentPane(differenceContentPane(model, selectedFiles));
                 current = model;
                 current.findDiff();
@@ -160,8 +160,8 @@ public class DifferenceSwingComponent extends JFrame {
     }
 
     private Container differenceContentPane(DifferenceBetweenBlobs model, File[] selectedFiles) {
-        JComponent left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[0]);
-        JComponent right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[1]);
+        JComponent left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[1]);
+        JComponent right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[0]);
         JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         main.setResizeWeight(0.5f);
         main.setOneTouchExpandable(false);
