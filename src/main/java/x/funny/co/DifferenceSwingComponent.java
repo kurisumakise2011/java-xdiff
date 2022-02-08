@@ -6,8 +6,6 @@ import javax.swing.border.Border;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
@@ -62,7 +60,8 @@ public class DifferenceSwingComponent extends JFrame {
         initComponents();
     }
 
-    public void initComponents() {;
+    public void initComponents() {
+        ;
         startContentPane = startContentPane();
         setPreferredSize(screenSize);
         log.info("preferred size {}", screenSize.toString());
@@ -142,7 +141,7 @@ public class DifferenceSwingComponent extends JFrame {
                     current.findDiff();
                     JScrollPane left = (JScrollPane) pane.getLeftComponent();
                     JScrollPane right = (JScrollPane) pane.getRightComponent();
-                    synchronizedScroll(left, right, model);
+                    synchronizedScroll(left, right);
                     right.setVisible(true);
                     left.setVisible(true);
                     validate();
@@ -198,19 +197,10 @@ public class DifferenceSwingComponent extends JFrame {
         return main;
     }
 
-    private void synchronizedScroll(JScrollPane left, JScrollPane right, DifferenceBetweenBlobs model) {
+    private void synchronizedScroll(JScrollPane left, JScrollPane right) {
         BoundedRangeModel yMdel, xModel;
-        if (model.isLeftBigger()) {
-            yMdel = left.getVerticalScrollBar().getModel();
-            xModel = left.getHorizontalScrollBar().getModel();
-        } else {
-            yMdel = right.getVerticalScrollBar().getModel();
-            xModel = right.getHorizontalScrollBar().getModel();
-        }
-
-        left.getVerticalScrollBar().setModel(yMdel);
-        left.getHorizontalScrollBar().setModel(xModel);
-
+        yMdel = left.getVerticalScrollBar().getModel();
+        xModel = left.getHorizontalScrollBar().getModel();
         right.getVerticalScrollBar().setModel(yMdel);
         right.getHorizontalScrollBar().setModel(xModel);
     }

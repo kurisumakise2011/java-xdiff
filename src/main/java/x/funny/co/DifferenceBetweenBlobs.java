@@ -149,7 +149,7 @@ public class DifferenceBetweenBlobs {
             int startLine = findStartLine(target);
             int targetLen = target.getLength() - startLine - 1;
             String after = getText(target, startLine + 1, targetLen);
-            Element paragraph = target.getParagraphElement(from);
+            Element paragraph = target.getParagraphElement(target.getLength());
             List<Position> positions = new ArrayList<>();
             if (paragraph instanceof AbstractDocument.BranchElement) {
                 var element = (AbstractDocument.BranchElement) paragraph;
@@ -181,10 +181,11 @@ public class DifferenceBetweenBlobs {
             SimpleAttributeSet attributeSet = new SimpleAttributeSet();
             StyleConstants.setBackground(attributeSet, grey);
             target.insertString(startLine, sb.toString(), attributeSet);
+            int l = sb.length();
             if (!after.isEmpty()) {
                 target.insertString(target.getLength(), after, paragraph.getAttributes());
                 for (Position position : positions) {
-                    target.setCharacterAttributes(position.start + 1, position.end - position.start + 1, position.attributes, false);
+                    target.setCharacterAttributes(l + position.start, position.end - position.start, position.attributes, false);
                 }
             }
         } catch (BadLocationException e) {
