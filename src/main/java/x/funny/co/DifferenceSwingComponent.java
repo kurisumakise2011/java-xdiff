@@ -6,6 +6,8 @@ import javax.swing.border.Border;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
@@ -35,6 +37,12 @@ public class DifferenceSwingComponent extends JFrame {
             "</body></html>";
 
     String welcomeTip = WELCOME_HTML.replace("$_c", selector).replace("$_s", multiple);
+    String helpTip = ("Useful hotkeys\n" +
+            "To open files to compare please click $_c + O, and then using $_s, select two files.\n" +
+            "To enable editing, click $_c + E\n" +
+            "To go next difference, click N\n" +
+            "To go previous difference, click P\n" +
+            "To close files, click $_c + C\n").replace("$_c", selector).replace("$_s", multiple);
 
     private DifferenceBetweenBlobs current;
 
@@ -45,8 +53,9 @@ public class DifferenceSwingComponent extends JFrame {
     private JMenuItem diffFiles;
     private JMenuItem enableEditing;
     private JMenu help;
-    private JMenu about;
+    private JMenuItem about;
     private Container startContentPane;
+    private JMenuItem helpTipMenu;
 
 
     public DifferenceSwingComponent() throws HeadlessException {
@@ -88,20 +97,28 @@ public class DifferenceSwingComponent extends JFrame {
         enableEditing.setEnabled(false);
         edit.add(enableEditing);
 
+
         help = new JMenu("Help");
-        help.setMnemonic(KeyEvent.VK_F11);
+        help.setMnemonic(KeyEvent.VK_F10);
         help.getAccessibleContext().setAccessibleDescription("The help dialog");
 
-        about = new JMenu("About");
+        helpTipMenu = new JMenuItem("Shortcuts");
+        helpTipMenu.setMnemonic(KeyEvent.VK_F11);
+        help.add(helpTipMenu);
+
+        about = new JMenuItem("About");
         about.setMnemonic(KeyEvent.VK_F12);
-        about.getAccessibleContext().setAccessibleDescription("The about dialog");
+        help.add(about);
 
         menuBar.add(file);
         menuBar.add(edit);
         menuBar.add(help);
-        menuBar.add(about);
 
         // Actions
+        helpTipMenu.addActionListener(e -> JOptionPane.showMessageDialog(null, helpTip));
+
+        about.addActionListener(e -> JOptionPane.showMessageDialog(null, "Jetbrains test task"));
+
         openFiles.addActionListener(e -> {
             log.info("waiting for dialog");
             DifferenceBetweenBlobs model = new DifferenceBetweenBlobs();

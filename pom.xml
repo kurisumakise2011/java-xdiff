@@ -15,7 +15,7 @@
     </properties>
 
     <build>
-        <finalName>spring-security-saml</finalName>
+        <finalName>xdiff</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
