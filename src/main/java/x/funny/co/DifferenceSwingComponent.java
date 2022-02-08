@@ -166,15 +166,25 @@ public class DifferenceSwingComponent extends JFrame {
     }
 
     private Container differenceContentPane(DifferenceBetweenBlobs model, File[] selectedFiles) {
-        JComponent left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[0]);
-        JComponent right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[1]);
+        JScrollPane left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[0]);
+        JScrollPane right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[1]);
+        synchronizedScroll(left, right);
         JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         main.setResizeWeight(0.5f);
+        main.setEnabled(false);
         main.setOneTouchExpandable(false);
         return main;
     }
 
-    private JComponent buildDifferencePanel(DifferenceBetweenBlobs model, String constraint, File selectedFile) {
+    private void synchronizedScroll(JScrollPane left, JScrollPane right) {
+        BoundedRangeModel yMdel = left.getVerticalScrollBar().getModel();
+        right.getVerticalScrollBar().setModel(yMdel);
+
+        BoundedRangeModel xModel = left.getHorizontalScrollBar().getModel();
+        right.getHorizontalScrollBar().setModel(xModel);
+    }
+
+    private JScrollPane buildDifferencePanel(DifferenceBetweenBlobs model, String constraint, File selectedFile) {
         StyledDocument doc = new DefaultStyledDocument();
         doc.addDocumentListener(new DefaultDocumentListener());
 
@@ -183,7 +193,6 @@ public class DifferenceSwingComponent extends JFrame {
         textPane.setEditable(false);
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         textPane.setDocument(doc);
-
 
         JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -202,16 +211,14 @@ public class DifferenceSwingComponent extends JFrame {
                 if (e.getKeyCode() == KeyEvent.VK_N) {
                     if (position < iterator.size() - 1) {
                         position++;
-                        textPane.setCaretPosition(iterator.get(position));
                     }
-
+                    textPane.setCaretPosition(iterator.get(position));
                 }
                 if (e.getKeyCode() == KeyEvent.VK_P) {
                     if (position > 0) {
                         position--;
-                        textPane.setCaretPosition(iterator.get(position));
                     }
-
+                    textPane.setCaretPosition(iterator.get(position));
                 }
             }
         });

@@ -5,6 +5,10 @@ public class SwingUserInterfaceException extends RuntimeException {
         super(message);
     }
 
+    public SwingUserInterfaceException(Throwable cause) {
+        super(cause);
+    }
+
     public SwingUserInterfaceException(String message, Throwable cause) {
         super(message, cause);
     }

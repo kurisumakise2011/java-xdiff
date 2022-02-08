@@ -2,6 +2,7 @@ package x.funny.co;
 
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
+import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -23,6 +24,7 @@ public class DifferenceBetweenBlobs {
             new StyledColor(REMOVAL_LINE, Color.decode("#ffebee")),
             new StyledColor(EQUALITY, Color.WHITE)
     };
+    private static final Color grey = Color.decode("#f8f9fa");
 
     private Blob left;
     private Blob right;
@@ -56,11 +58,15 @@ public class DifferenceBetweenBlobs {
 
         for (DifferenceUtils.Difference diff : result) {
             if (diff.type == DifferenceUtils.DifferenceType.INSERTION) {
-                int pos = clarifyLine(rightDoc, diff.text, INSERTION_LINE, INSERTION);
+                int len = rightDoc.getLength();
+                int pos = checkLine(rightDoc, diff.text, INSERTION_LINE, INSERTION);
+                alignDocument(rightDoc, leftDoc, len, diff.text.length());
                 this.right.add(pos);
             }
             if (diff.type == DifferenceUtils.DifferenceType.REMOVAL) {
-                int pos = clarifyLine(leftDoc, diff.text, REMOVAL_LINE, REMOVAL);
+                int len = leftDoc.getLength();
+                int pos = checkLine(leftDoc, diff.text, REMOVAL_LINE, REMOVAL);
+                alignDocument(leftDoc, rightDoc, len, diff.text.length());
                 this.left.add(pos);
             }
             if (diff.type == DifferenceUtils.DifferenceType.EQUALITY) {
@@ -72,7 +78,25 @@ public class DifferenceBetweenBlobs {
         getPosition(this.right);
     }
 
-    private int clarifyLine(StyledDocument doc, String text, String lineColor, String diffColor) {
+    private void alignDocument(StyledDocument source, StyledDocument target, int from, int len) {
+        try {
+            String text = source.getText(from, len);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < text.length(); i++) {
+                if (text.charAt(i) == '\n') {
+                    sb.append('\n');
+                } else {
+                    sb.append('\u0000');
+                }
+            }
+            SimpleAttributeSet attributeSet = new SimpleAttributeSet();
+            StyleConstants.setBackground(attributeSet, grey);
+            target.insertString(from, sb.toString(), attributeSet);
+        } catch (BadLocationException ignored) {
+        }
+    }
+
+    private int checkLine(StyledDocument doc, String text, String lineColor, String diffColor) {
         int first = doc.getLength();
         int pos = insertText(doc, text, doc.getStyle(diffColor));
         Element p = doc.getParagraphElement(first);
@@ -101,8 +125,8 @@ public class DifferenceBetweenBlobs {
             doc.insertString(doc.getLength(), text, attr);
             return doc.getLength();
         } catch (BadLocationException ignored) {
-            return -1;
         }
+        return doc.getLength();
     }
 
     private void getPosition(Blob blob) {
