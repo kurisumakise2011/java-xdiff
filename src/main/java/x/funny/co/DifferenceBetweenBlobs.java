@@ -111,8 +111,31 @@ public class DifferenceBetweenBlobs {
                 insertText(rightDoc, diff.text, rightDoc.getStyle(EQUALITY));
             }
         }
+
+        if (isLeftBigger) {
+            fill(rightDoc, leftDoc,capacity - rightDoc.getLength());
+        } else {
+            fill(leftDoc, rightDoc,capacity - leftDoc.getLength());
+        }
         getPosition(this.left);
         getPosition(this.right);
+    }
+
+    private void fill(StyledDocument target, StyledDocument source, int count) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            String text = source.getText(target.getLength(), count);
+            for (int i = 0; i < text.length(); i++) {
+                if (text.charAt(i) == '\n') {
+                    sb.append('\n');
+                } else {
+                    sb.append('\u0000');
+                }
+            }
+            target.insertString(target.getLength(), sb.toString(), null);
+        } catch (BadLocationException e) {
+            throw new ApplicationLogicRuntimeException(e.getMessage());
+        }
     }
 
     private static class Position {
@@ -126,7 +149,7 @@ public class DifferenceBetweenBlobs {
             int startLine = findStartLine(target);
             int targetLen = target.getLength() - startLine - 1;
             String after = getText(target, startLine + 1, targetLen);
-            Element paragraph = target.getParagraphElement(target.getLength());
+            Element paragraph = target.getParagraphElement(from);
             List<Position> positions = new ArrayList<>();
             if (paragraph instanceof AbstractDocument.BranchElement) {
                 var element = (AbstractDocument.BranchElement) paragraph;
