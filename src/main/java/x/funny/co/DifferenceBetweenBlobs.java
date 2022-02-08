@@ -80,11 +80,8 @@ public class DifferenceBetweenBlobs {
         String left = readAll(this.left);
         String right = readAll(this.right);
 
-        int capacity = Math.max(left.length(), right.length());
-        isLeftBigger = capacity == left.length();
-
-        StyledDocument leftDoc = new DefaultStyledDocument(new GapContent(capacity), new StyleContext());
-        StyledDocument rightDoc = new DefaultStyledDocument(new GapContent(capacity), new StyleContext());
+        StyledDocument leftDoc = new DefaultStyledDocument();
+        StyledDocument rightDoc = new DefaultStyledDocument();
         this.left.getContent().setDocument(leftDoc);
         this.right.getContent().setDocument(rightDoc);
 
@@ -112,6 +109,9 @@ public class DifferenceBetweenBlobs {
             }
         }
 
+
+        int capacity = Math.max(leftDoc.getLength(), rightDoc.getLength());
+        isLeftBigger = capacity == leftDoc.getLength();
         if (isLeftBigger) {
             fill(rightDoc, leftDoc,capacity - rightDoc.getLength());
         } else {
