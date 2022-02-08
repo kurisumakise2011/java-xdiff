@@ -8,17 +8,15 @@ import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 
 import static x.funny.co.Main.MACOS;
 
 public class DifferenceSwingComponent extends JFrame {
+    private static final Logger1 log = Logger1.logger(DifferenceSwingComponent.class);
     private static final int MB_1 = 1024 * 1024 * 1024;
     private static final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
     private static final Dimension buttonSize = dim(screenSize.width / 8f, screenSize.height / 8f);
@@ -29,7 +27,6 @@ public class DifferenceSwingComponent extends JFrame {
             "<p style=\"margin-bottom: 20px;font-size: 14px;\">Use menu tab or hotkeys below</p>" +
             "<p style=\"margin-bottom: 20px;font-size: 14px;\">Useful hotkeys</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To open files to compare please click $_c + O, and then using $_s, select two files.</p>" +
-            "<p style=\"margin-bottom: 15px;font-size: 12px;\">To find the difference of contents, click $_c + D</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To enable editing, click $_c + E</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To go next difference, click N</p>" +
             "<p style=\"margin-bottom: 15px;font-size: 12px;\">To go previous difference, click P</p>" +
@@ -56,9 +53,10 @@ public class DifferenceSwingComponent extends JFrame {
         initComponents();
     }
 
-    public void initComponents() {
+    public void initComponents() {;
         startContentPane = startContentPane();
         setPreferredSize(screenSize);
+        log.info("preferred size {}", screenSize.toString());
         setLocationRelativeTo(null);
         setContentPane(startContentPane);
         setJMenuBar(createMenuBar());
@@ -84,12 +82,10 @@ public class DifferenceSwingComponent extends JFrame {
         edit.getAccessibleContext().setAccessibleDescription("The edit menu");
         edit.setMnemonic(KeyEvent.VK_E);
 
-        diffFiles = new JMenuItem("Diff Files");
-        diffFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK));
-        edit.add(diffFiles);
-
         enableEditing = new JCheckBoxMenuItem("Enable Editing");
         enableEditing.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, InputEvent.CTRL_DOWN_MASK));
+        // TODO could be implemented via asynchronous operations after each key released in the document
+        enableEditing.setEnabled(false);
         edit.add(enableEditing);
 
         help = new JMenu("Help");
@@ -107,6 +103,7 @@ public class DifferenceSwingComponent extends JFrame {
 
         // Actions
         openFiles.addActionListener(e -> {
+            log.info("waiting for dialog");
             DifferenceBetweenBlobs model = new DifferenceBetweenBlobs();
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setMultiSelectionEnabled(true);
@@ -120,30 +117,39 @@ public class DifferenceSwingComponent extends JFrame {
                 if (selectedFiles[1].length() > MB_1) {
                     throw new SwingUserInterfaceException("file cannot be bigger than 1 MB");
                 }
-                setContentPane(differenceContentPane(model, selectedFiles));
-                current = model;
-                current.findDiff();
-                validate();
-                repaint();
+                SwingUtilities.invokeLater(() -> {
+                    log.info("invoking a search of the difference between '{}' and '{}' ", selectedFiles[0], selectedFiles[1]);
+                    JSplitPane pane = differenceContentPane(model, selectedFiles);
+                    setContentPane(pane);
+                    current = model;
+                    current.findDiff();
+                    JScrollPane left = (JScrollPane) pane.getLeftComponent();
+                    JScrollPane right = (JScrollPane) pane.getRightComponent();
+                    synchronizedScroll(left, right, model);
+                    right.setVisible(true);
+                    left.setVisible(true);
+                    validate();
+                    repaint();
+                    log.info("difference found, repainted and validated");
+
+                });
 
             }
         });
 
-        closeFiles.addActionListener(e -> setContentPane(startContentPane));
+        closeFiles.addActionListener(e -> {
+            log.info("closing current files");
+            setContentPane(startContentPane);
+        });
 
         enableEditing.addItemListener(e -> {
             if (current != null) {
+                log.info("enabled editing mode is activated");
                 int stateChange = e.getStateChange();
                 JEditorPane left = current.getLeft().getContent();
                 JEditorPane right = current.getRight().getContent();
                 left.setEditable(stateChange == ItemEvent.SELECTED);
                 right.setEditable(stateChange == ItemEvent.SELECTED);
-            }
-        });
-
-        diffFiles.addActionListener(e -> {
-            if (current != null && current.canBeCompared()) {
-                current.findDiff();
             }
         });
 
@@ -165,10 +171,9 @@ public class DifferenceSwingComponent extends JFrame {
         return openPanel;
     }
 
-    private Container differenceContentPane(DifferenceBetweenBlobs model, File[] selectedFiles) {
+    private JSplitPane differenceContentPane(DifferenceBetweenBlobs model, File[] selectedFiles) {
         JScrollPane left = buildDifferencePanel(model, BorderLayout.WEST, selectedFiles[0]);
         JScrollPane right = buildDifferencePanel(model, BorderLayout.EAST, selectedFiles[1]);
-        synchronizedScroll(left, right);
         JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         main.setResizeWeight(0.5f);
         main.setEnabled(false);
@@ -176,11 +181,20 @@ public class DifferenceSwingComponent extends JFrame {
         return main;
     }
 
-    private void synchronizedScroll(JScrollPane left, JScrollPane right) {
-        BoundedRangeModel yMdel = left.getVerticalScrollBar().getModel();
-        right.getVerticalScrollBar().setModel(yMdel);
+    private void synchronizedScroll(JScrollPane left, JScrollPane right, DifferenceBetweenBlobs model) {
+        BoundedRangeModel yMdel, xModel;
+        if (model.isLeftBigger()) {
+            yMdel = left.getVerticalScrollBar().getModel();
+            xModel = left.getHorizontalScrollBar().getModel();
+        } else {
+            yMdel = right.getVerticalScrollBar().getModel();
+            xModel = right.getHorizontalScrollBar().getModel();
+        }
 
-        BoundedRangeModel xModel = left.getHorizontalScrollBar().getModel();
+        left.getVerticalScrollBar().setModel(yMdel);
+        left.getHorizontalScrollBar().setModel(xModel);
+
+        right.getVerticalScrollBar().setModel(yMdel);
         right.getHorizontalScrollBar().setModel(xModel);
     }
 
@@ -197,31 +211,39 @@ public class DifferenceSwingComponent extends JFrame {
         JScrollPane scrollPane = new JScrollPane(textPane);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVisible(false);
 
         Blob blob = new Blob(selectedFile, textPane);
 
         model.appendFile(blob, constraint);
 
-        textPane.addKeyListener(new KeyAdapter() {
-            int position = 0;
-            List<Integer> iterator = blob.getDiffPositions();
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                .addKeyEventDispatcher(new KeyEventDispatcher() {
+                    int position = 0;
 
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_N) {
-                    if (position < iterator.size() - 1) {
-                        position++;
+                    @Override
+                    public boolean dispatchKeyEvent(KeyEvent e) {
+                        final List<Integer> pointer = model.getDiffPositions();
+                        if (e.getKeyCode() == KeyEvent.VK_N) {
+                            if (position < pointer.size() - 1) {
+                                position++;
+                            }
+                            if (position < pointer.size()) {
+                                textPane.setCaretPosition(pointer.get(position));
+                            }
+
+                        }
+                        if (e.getKeyCode() == KeyEvent.VK_P) {
+                            if (position > 0) {
+                                position--;
+                            }
+                            if (position < pointer.size()) {
+                                textPane.setCaretPosition(pointer.get(position));
+                            }
+                        }
+                        return false;
                     }
-                    textPane.setCaretPosition(iterator.get(position));
-                }
-                if (e.getKeyCode() == KeyEvent.VK_P) {
-                    if (position > 0) {
-                        position--;
-                    }
-                    textPane.setCaretPosition(iterator.get(position));
-                }
-            }
-        });
+                });
 
         return scrollPane;
     }

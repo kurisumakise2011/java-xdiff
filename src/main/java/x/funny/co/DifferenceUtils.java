@@ -213,7 +213,6 @@ public final class DifferenceUtils {
             diffs.add(new Difference(DifferenceType.REMOVAL, left));
             return diffs;
         }
-
         String longDiff = left.length() > right.length() ? left : right;
         String shortDiff = left.length() > right.length() ? right : left;
         int i = longDiff.indexOf(shortDiff);
@@ -224,73 +223,15 @@ public final class DifferenceUtils {
             diffs.add(new Difference(type, longDiff.substring(i + shortDiff.length())));
             return diffs;
         }
-
         if (shortDiff.length() == 1) {
             diffs.add(new Difference(DifferenceType.REMOVAL, left));
             diffs.add(new Difference(DifferenceType.INSERTION, right));
             return diffs;
         }
-
-        String[] hm = findFastMatchIfPossible(left, right);
-        if (hm != null) {
-            LinkedList<Difference> diffsA = computeDifferenceBetween(hm[0], hm[2]);
-            LinkedList<Difference> diffsB = computeDifferenceBetween(hm[1], hm[3]);
-            diffs = diffsA;
-            diffs.add(new Difference(DifferenceType.EQUALITY, hm[4]));
-            diffs.addAll(diffsB);
-            return diffs;
-        }
-
-        return lookUpBisection(left, right);
+        return bisect(left, right);
     }
 
-    private static String[] findFastMatchIfPossible(String left, String right) {
-        String longDiff = left.length() > right.length() ? left : right;
-        String shortDiff = left.length() > right.length() ? right : left;
-        if (longDiff.length() < 4 || shortDiff.length() * 2 < longDiff.length()) {
-            // didn't find
-            return null;
-        }
-
-        String[] hm1 = findBestMatchIndex(longDiff, shortDiff, (longDiff.length() + 3) / 4);
-        String[] hm2 = findBestMatchIndex(longDiff, shortDiff, (longDiff.length() + 1) / 2);
-        String[] hm;
-        if (hm1 == null && hm2 == null) {
-            return null;
-        } else if (hm2 == null) {
-            hm = hm1;
-        } else if (hm1 == null) {
-            hm = hm2;
-        } else {
-            hm = hm1[4].length() > hm2[4].length() ? hm1 : hm2;
-        }
-
-        return (left.length() > right.length()) ? hm : new String[]{hm[2], hm[3], hm[0], hm[1], hm[4]};
-    }
-
-    private static String[] findBestMatchIndex(String longDiff, String shortDiff, int i) {
-        String seed = longDiff.substring(i, i + longDiff.length() / 4);
-        int j = -1;
-        String[] best = new String[4];
-        String common = "";
-        while ((j = shortDiff.indexOf(seed, j + 1)) != -1) {
-            int prefixLength = findGCP(longDiff.substring(i), shortDiff.substring(j));
-            int suffixLength = findGCS(longDiff.substring(0, i), shortDiff.substring(0, j));
-
-            if (common.length() < suffixLength + prefixLength) {
-                common = shortDiff.substring(j - suffixLength, j) + shortDiff.substring(j, j + prefixLength);
-                best[0] = longDiff.substring(0, i - suffixLength);
-                best[1] = longDiff.substring(i + prefixLength);
-                best[2] = shortDiff.substring(0, j - suffixLength);
-                best[3] = shortDiff.substring(j + prefixLength);
-            }
-        }
-        return (common.length() * 2 >= longDiff.length())
-                ? new String[]{best[0], best[1], best[2], best[3], common}
-                : null;
-    }
-
-    private static LinkedList<Difference> lookUpBisection(String left, String right) {
+    private static LinkedList<Difference> bisect(String left, String right) {
         int l = left.length();
         int r = right.length();
         int maxD = (l + r + 1) / 2;

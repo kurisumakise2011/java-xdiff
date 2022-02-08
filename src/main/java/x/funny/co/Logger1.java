@@ -1,10 +1,16 @@
 package x.funny.co;
 
 import java.util.MissingResourceException;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Logger1 extends Logger {
+    static {
+        String path = Main.class.getResource("/logging.properties").getPath();
+        System.setProperty("java.util.logging.config.file", path);
+    }
+
     public Logger1(Class<?> clazz) {
         this(clazz.getName(), null);
     }
@@ -30,8 +36,10 @@ public class Logger1 extends Logger {
         super(name, resourceBundleName);
     }
 
-    public static Logger1 logger1(Class<?> clazz) {
-        return new Logger1(clazz);
+    public static Logger1 logger(Class<?> clazz) {
+        Logger1 logger1 = new Logger1(clazz);
+        logger1.addHandler(new ConsoleHandler());
+        return logger1;
     }
 
     public void trace(String message, Object... params) {
@@ -55,6 +63,22 @@ public class Logger1 extends Logger {
     }
 
     private void logWithParams(Level level, String message, Object... params) {
-
+        if (params.length > 0) {
+            Throwable t = null;
+            int start = 0;
+            if (params[0] instanceof Throwable) {
+                t = (Throwable) params[0];
+                start = 1;
+            }
+            message = message.replace("{}", "%s");
+            for (int i = start; i < params.length; i++) {
+                message = String.format(message, params);
+            }
+            if (t != null) {
+                log(level, message, t);
+            } else {
+                log(level, message);
+            }
+        }
     }
 }
