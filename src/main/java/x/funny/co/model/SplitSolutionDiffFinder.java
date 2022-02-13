@@ -1,16 +1,14 @@
 package x.funny.co.model;
 
-import x.funny.co.view.SwingUserInterfaceException;
-
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-public class DefaultDiffFinder extends DiffFinder {
+public class SplitSolutionDiffFinder extends DiffFinder {
 
     @Override
     public LinkedList<DiffFinder.Difference> computeDifferenceBetween(String left, String right) {
         if (left == null || right == null) {
-            throw new SwingUserInterfaceException("File content must not be null");
+            throw new ApplicationLogicRuntimeException("File content must not be null");
         }
 
         LinkedList<Difference> list = fastCheck(left, right);
@@ -63,7 +61,7 @@ public class DefaultDiffFinder extends DiffFinder {
         int len;
 
         context.current = current;
-        context.prevEquality = prevEquality;
+        context.prevEquality = null;
 
         while (current != null) {
             switch (current.type) {
@@ -186,7 +184,7 @@ public class DefaultDiffFinder extends DiffFinder {
         }
     }
 
-    private static int findGCP(String left, String right) {
+    public static int findGCP(String left, String right) {
         int n = Math.min(left.length(), right.length());
         for (int i = 0; i < n; i++) {
             if (left.charAt(i) != right.charAt(i)) {
@@ -196,7 +194,7 @@ public class DefaultDiffFinder extends DiffFinder {
         return n;
     }
 
-    private static int findGCS(String left, String right) {
+    public static int findGCS(String left, String right) {
         int n = Math.min(left.length(), right.length());
         for (int i = 1; i <= n; i++) {
             if (left.charAt(left.length() - i) != right.charAt(right.length() - i)) {
@@ -234,7 +232,7 @@ public class DefaultDiffFinder extends DiffFinder {
         return bisect(left, right);
     }
 
-    private LinkedList<Difference> bisect(String left, String right) {
+    protected LinkedList<Difference> bisect(String left, String right) {
         int l = left.length();
         int r = right.length();
         int maxD = (l + r + 1) / 2;
@@ -319,7 +317,7 @@ public class DefaultDiffFinder extends DiffFinder {
         return diffs;
     }
 
-    private LinkedList<Difference> split(String left, String right, int x, int y) {
+    protected LinkedList<Difference> split(String left, String right, int x, int y) {
         LinkedList<Difference> differences = computeDifferenceBetween(left.substring(0, x), right.substring(0, y));
                 differences.addAll(computeDifferenceBetween(left.substring(x), right.substring(y)));
         return differences;

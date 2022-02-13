@@ -1,4 +1,4 @@
-package x.funny.co;
+package x.funny.co.model;
 
 import javax.swing.*;
 import java.io.File;

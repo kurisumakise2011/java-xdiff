@@ -6,97 +6,120 @@ import x.funny.co.model.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;
+import javax.swing.text.Document;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
-import java.util.List;
+import java.util.Deque;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class ActionController {
-    private static final Logger1 log = Logger1.logger(ActionController.class);
+public class DefaultActionController implements ActionController {
+    private static final Logger1 log = Logger1.logger(DefaultActionController.class);
     private static final int MB_1 = 1024 * 1024 * 1024;
     private final DifferenceSwingComponent view;
     private final DifferenceBetweenBlobs model;
+    private final String dir;
 
-    public ActionController(DifferenceSwingComponent view, DifferenceBetweenBlobs model) {
-        this.view = view;
-        this.model = model;
-
-        bindItemListener(view.getEnableEditing(), new EnableEditing());
-        bindActionListener(view.getOpenFiles(), new OpenFileAction());
-        bindActionListener(view.getCloseFiles(), new ClosFileAction());
-        bindActionListener(view.getAbout(), e -> JOptionPane.showMessageDialog(null, "Jetbrains test task"));
-        bindActionListener(view.getHelpTip(), e -> JOptionPane.showMessageDialog(null, view.getHelpTipMessage()));
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new JTextPaneKeyEventDispatcher());
+    public DefaultActionController(DifferenceSwingComponent view, DifferenceBetweenBlobs model) {
+        this(view, model, ".");
     }
 
-    private void bindActionListener(AbstractButton abstractButton, ActionListener actionListener) {
+    public DefaultActionController(DifferenceSwingComponent view, DifferenceBetweenBlobs model, String dir) {
+        this.view = view;
+        this.model = model;
+        this.dir = dir;
+
+        bindActionListener(view.getOpenFiles(), new OpenFileAction());
+        bindActionListener(view.getCloseFiles(), new CloseFileAction());
+        bindActionListener(view.getAbout(), e -> JOptionPane.showMessageDialog(null, "Jetbrains test task"));
+        bindActionListener(view.getHelpTip(), e -> JOptionPane.showMessageDialog(null, view.getHelpTipMessage()));
+        bindActionListener(view.getNextMatch(), new NextMatchAction());
+        bindActionListener(view.getPreviousMatch(), new PreviousMatchAction());
+    }
+
+    @Override
+    public void bindActionListener(AbstractButton abstractButton, ActionListener actionListener) {
         abstractButton.addActionListener(actionListener);
     }
 
-    private void bindItemListener(AbstractButton abstractButton, ItemListener itemListener) {
+    @Override
+    public void bindItemListener(AbstractButton abstractButton, ItemListener itemListener) {
         abstractButton.addItemListener(itemListener);
     }
 
+    @Override
+    public void bindKeyListener(JTextPane textPane, KeyListener keyListener) {
+        textPane.addKeyListener(keyListener);
+    }
+
+    @Override
     public void dispatch() {
         view.pack();
         view.setVisible(true);
     }
 
-    public class JTextPaneKeyEventDispatcher implements KeyEventDispatcher {
-        int position = 0;
-
+    private class NextMatchAction implements ActionListener {
         @Override
-        public boolean dispatchKeyEvent(KeyEvent e) {
-            Component component = e.getComponent();
-            JTextPane textPane = null;
-            if (component instanceof JTextPane) {
-                textPane = (JTextPane) component;
-            }
-
-            if (textPane == null) {
-                return false;
-            }
-            final List<Integer> pointer = model.getDiffPositions();
-            if (e.getKeyCode() == KeyEvent.VK_N) {
-                if (position < pointer.size() - 1) {
-                    position++;
-                }
-                if (position < pointer.size()) {
-                    textPane.setCaretPosition(pointer.get(position));
-                }
-
-            }
-            if (e.getKeyCode() == KeyEvent.VK_P) {
-                if (position > 0) {
-                    position--;
-                }
-                if (position < pointer.size()) {
-                    textPane.setCaretPosition(pointer.get(position));
-                }
-            }
-            return false;
+        public void actionPerformed(ActionEvent e) {
+            // Can use any of contents see @synchronizedScroll
+            JTextPane pane = model.getLeft().getContent();
+            Deque<Integer> diffPositions = model.getDiffPositions();
+            findMatch(pane, diffPositions::pollFirst, diffPositions::addLast);
         }
     }
 
-    private class EnableEditing implements ItemListener {
+    private class PreviousMatchAction implements ActionListener {
         @Override
-        public void itemStateChanged(ItemEvent e) {
-            if (model.canBeCompared()) {
-                log.info("enabled editing mode is activated");
-                int stateChange = e.getStateChange();
-                JEditorPane left = model.getLeft().getContent();
-                JEditorPane right = model.getRight().getContent();
-                left.setEditable(stateChange == ItemEvent.SELECTED);
-                right.setEditable(stateChange == ItemEvent.SELECTED);
-            }
+        public void actionPerformed(ActionEvent e) {
+            // Can use any of contents see @synchronizedScroll
+            JTextPane pane = model.getLeft().getContent();
+            Deque<Integer> diffPositions = model.getDiffPositions();
+            findMatch(pane, diffPositions::pollLast, diffPositions::addFirst);
         }
     }
 
-    private class ClosFileAction implements ActionListener {
+    private void findMatch(JTextPane pane, Supplier<Integer> getter, Consumer<Integer> setter) {
+        SwingUtilities.invokeLater(() -> {
+            Integer pos = getter.get();
+            if (pos != null && model.canBeCompared()) {
+                if (pos == pane.getCaretPosition()) {
+                    setter.accept(pos);
+                    pos = getter.get();
+                    if (pos != null) {
+                        updateCaret(pane, pos);
+                        setter.accept(pos);
+                    }
+                } else {
+                    updateCaret(pane, pos);
+                    setter.accept(pos);
+                }
+            }
+        });
+    }
+
+    private void updateCaret(JTextPane pane, Integer pos) {
+        setPosition(pane, pos);
+
+        view.validate();
+        view.repaint();
+
+        pane.grabFocus();
+    }
+
+    private void setPosition(JTextPane pane, Integer pos) {
+        Document document = pane.getDocument();
+        int start = document.getStartPosition().getOffset();
+        int end = document.getEndPosition().getOffset();
+        if (pos >= start && pos <= end) {
+            pane.setCaretPosition(pos);
+        }
+    }
+
+    private class CloseFileAction implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             log.info("closing current files");
@@ -110,7 +133,7 @@ public class ActionController {
         public void actionPerformed(ActionEvent e) {
             model.clear();
             log.info("waiting for dialog");
-            JFileChooser fileChooser = new JFileChooser();
+            JFileChooser fileChooser = new JFileChooser(dir);
             fileChooser.setMultiSelectionEnabled(true);
             int code = fileChooser.showOpenDialog(view);
             File[] selectedFiles = fileChooser.getSelectedFiles();
@@ -156,7 +179,8 @@ public class ActionController {
     }
 
     private void appendSingleFileToModel(JScrollPane scrollPane, File file, String constraint) {
-        Blob target = new Blob(file, (JTextPane) scrollPane.getViewport().getView());
+        JTextPane textPane = (JTextPane) scrollPane.getViewport().getView();
+        Blob target = new Blob(file, textPane);
         model.appendFile(target, constraint);
     }
 }

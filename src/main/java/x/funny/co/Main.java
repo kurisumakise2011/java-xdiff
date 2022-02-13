@@ -1,5 +1,11 @@
 package x.funny.co;
 
+import x.funny.co.controller.ActionController;
+import x.funny.co.controller.DefaultActionController;
+import x.funny.co.model.SplitSolutionDiffFinder;
+import x.funny.co.model.DifferenceBetweenBlobs;
+import x.funny.co.view.DifferenceSwingComponent;
+
 import javax.swing.*;
 import java.util.Arrays;
 import java.util.Locale;
@@ -13,9 +19,8 @@ public class Main {
         logger.info("running the application with args: '{}'", Arrays.toString(args));
         logger.info("current operation system is " + OS);
         SwingUtilities.invokeLater(() -> {
-            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-                logger.error("uncaught exception occurred in the thread='{}'", e, t.toString());
-            });
+            Thread.setDefaultUncaughtExceptionHandler(
+                    (t, e) -> logger.error("uncaught exception occurred in the thread='{}'", e, t.toString()));
             try {
                 if (MACOS) {
                     System.setProperty("apple.laf.useScreenMenuBar", "true");
@@ -24,11 +29,17 @@ public class Main {
             } catch (Exception ignored) {
                 logger.warn("could not setLookAndFeel for MACOS, default theme will be used ...");
             }
-
-            DifferenceSwingComponent ui = new DifferenceSwingComponent();
-            ui.pack();
-            ui.setVisible(true);
+            predefine();
             logger.info("application has been started successfully ... ");
         });
+    }
+
+    private static void predefine() {
+        SplitSolutionDiffFinder diffFinder = new SplitSolutionDiffFinder();
+        DifferenceSwingComponent ui = new DifferenceSwingComponent();
+        DifferenceBetweenBlobs model = new DifferenceBetweenBlobs(diffFinder);
+
+        ActionController actionController = new DefaultActionController(ui, model);
+        actionController.dispatch();
     }
 }

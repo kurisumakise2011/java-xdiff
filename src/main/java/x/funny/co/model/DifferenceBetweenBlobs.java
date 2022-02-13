@@ -1,22 +1,25 @@
-package x.funny.co;
+package x.funny.co.model;
+
+import x.funny.co.Logger1;
 
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
+import javax.swing.text.Document;
 import javax.swing.text.Element;
-import javax.swing.text.GapContent;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
-import javax.swing.text.StyleContext;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class DifferenceBetweenBlobs {
     private static final Logger1 log = Logger1.logger(DifferenceBetweenBlobs.class);
@@ -34,29 +37,37 @@ public class DifferenceBetweenBlobs {
             new StyledColor(EQUALITY, Color.WHITE)
     };
     private static final Color grey = Color.decode("#f8f9fa");
-    private static final int MAX_DISTANCE = 1000;
+    public static final int MAX_DISTANCE = 500;
+    private final int distance;
 
     private Blob left;
     private Blob right;
-    private final LinkedList<Integer> diffPositions = new LinkedList<>();
+    private final Deque<Integer> diffPositions = new ConcurrentLinkedDeque<>();
+    private final DiffFinder diffFinder;
+
+    public DifferenceBetweenBlobs(DiffFinder diffFinder) {
+        this(diffFinder, MAX_DISTANCE);
+    }
+
+    public DifferenceBetweenBlobs(DiffFinder diffFinder, int maxDistance) {
+        this.diffFinder = diffFinder;
+        this.distance = maxDistance;
+    }
 
     public void add(Integer integer) {
         Integer last = diffPositions.peekLast();
-        if (last != null && Math.abs(integer - last) <= MAX_DISTANCE) {
+        if (last != null && Math.abs(integer - last) <= distance) {
             return;
         }
         diffPositions.add(integer);
     }
 
-    public Integer peek() {
-        return diffPositions.peek();
+    public void clear() {
+        diffPositions.clear();
     }
 
-    public ArrayList<Integer> getDiffPositions() {
-        return new ArrayList<>(diffPositions);
-    }
-
-    public DifferenceBetweenBlobs() {
+    public Deque<Integer> getDiffPositions() {
+        return diffPositions;
     }
 
     public void appendFile(Blob target, String constraint) {
@@ -66,11 +77,6 @@ public class DifferenceBetweenBlobs {
         if (BorderLayout.EAST.equals(constraint)) {
             right = target;
         }
-    }
-
-    boolean isLeftBigger = false;
-    public boolean isLeftBigger() {
-        return isLeftBigger;
     }
 
     public void findDiff() {
@@ -88,37 +94,36 @@ public class DifferenceBetweenBlobs {
         addBackgroundStyles(leftDoc);
         addBackgroundStyles(rightDoc);
 
-        LinkedList<DifferenceUtils.Difference> result = DifferenceUtils.computeDifferenceBetween(left, right);
+        LinkedList<SplitSolutionDiffFinder.Difference> result = diffFinder.computeDifferenceBetween(left, right);
 
-        for (DifferenceUtils.Difference diff : result) {
-            if (diff.type == DifferenceUtils.DifferenceType.INSERTION) {
+        for (SplitSolutionDiffFinder.Difference diff : result) {
+            if (diff.type == SplitSolutionDiffFinder.DifferenceType.INSERTION) {
                 int len = rightDoc.getLength();
                 int pos = checkLine(rightDoc, diff.text, INSERTION_LINE, INSERTION);
                 alignDocument(rightDoc, leftDoc, len, diff.text.length());
-                this.add(pos);
+                this.add((pos + len) / 2);
             }
-            if (diff.type == DifferenceUtils.DifferenceType.REMOVAL) {
+            if (diff.type == SplitSolutionDiffFinder.DifferenceType.REMOVAL) {
                 int len = leftDoc.getLength();
                 int pos = checkLine(leftDoc, diff.text, REMOVAL_LINE, REMOVAL);
                 alignDocument(leftDoc, rightDoc, len, diff.text.length());
-                this.add(pos);
+                this.add((pos + len) / 2);
             }
-            if (diff.type == DifferenceUtils.DifferenceType.EQUALITY) {
+            if (diff.type == SplitSolutionDiffFinder.DifferenceType.EQUALITY) {
                 insertText(leftDoc, diff.text, leftDoc.getStyle(EQUALITY));
                 insertText(rightDoc, diff.text, rightDoc.getStyle(EQUALITY));
             }
         }
 
-
         int capacity = Math.max(leftDoc.getLength(), rightDoc.getLength());
-        isLeftBigger = capacity == leftDoc.getLength();
+        boolean isLeftBigger = capacity == leftDoc.getLength();
         if (isLeftBigger) {
             fill(rightDoc, leftDoc,capacity - rightDoc.getLength());
         } else {
             fill(leftDoc, rightDoc,capacity - leftDoc.getLength());
         }
         getPosition(this.left);
-        getPosition(this.right);
+        this.left.getContent().grabFocus();
     }
 
     private void fill(StyledDocument target, StyledDocument source, int count) {
@@ -147,8 +152,8 @@ public class DifferenceBetweenBlobs {
     private void alignDocument(StyledDocument source, StyledDocument target, int from, int len) {
         try {
             int startLine = findStartLine(target);
-            int targetLen = target.getLength() - startLine - 1;
-            String after = getText(target, startLine + 1, targetLen);
+            int targetLen = target.getLength() - startLine;
+            String after = getText(target, startLine, targetLen);
             Element paragraph = target.getParagraphElement(target.getLength());
             List<Position> positions = new ArrayList<>();
             if (paragraph instanceof AbstractDocument.BranchElement) {
@@ -166,7 +171,7 @@ public class DifferenceBetweenBlobs {
                     }
                 }
             }
-            target.remove(startLine + 1, targetLen);
+            target.remove(startLine, targetLen);
 
             String text = source.getText(from, len);
             text = text.replace(after, "");
@@ -214,7 +219,7 @@ public class DifferenceBetweenBlobs {
         }
     }
 
-    private String getText(StyledDocument target, int offset, int length) {
+    public static String getText(Document target, int offset, int length) {
         try {
             return target.getText(offset, length);
         } catch (BadLocationException e) {
@@ -257,8 +262,10 @@ public class DifferenceBetweenBlobs {
     }
 
     private void getPosition(Blob blob) {
-        if (this.peek() != null) {
-            blob.getContent().setCaretPosition(this.peek());
+        Integer pos = diffPositions.pollFirst();
+        if (pos != null) {
+            blob.getContent().setCaretPosition(pos);
+            diffPositions.addLast(pos);
         } else {
             blob.getContent().setCaretPosition(0);
         }
@@ -276,12 +283,12 @@ public class DifferenceBetweenBlobs {
         return right;
     }
 
-    private String readAll(Blob blob) {
+    public String readAll(Blob blob) {
         try {
             return new String(Files.readAllBytes(blob.getFile().toPath()));
         } catch (IOException e) {
             log.debug("IO exception", e);
-            throw new SwingUserInterfaceException("could not read a file content", e);
+            throw new ApplicationLogicRuntimeException("could not read a file content", e);
         }
     }
 
