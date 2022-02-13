@@ -1,4 +1,9 @@
-package x.funny.co;
+package x.funny.co.controller;
+
+import x.funny.co.Logger1;
+import x.funny.co.exception.SwingUserInterfaceException;
+import x.funny.co.model.Blob;
+import x.funny.co.model.DifferenceBetweenBlobs;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;

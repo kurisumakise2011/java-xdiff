@@ -1,4 +1,4 @@
-package x.funny.co;
+package x.funny.co.exception;
 
 public class SwingUserInterfaceException extends RuntimeException {
     public SwingUserInterfaceException(String message) {

@@ -1,50 +1,34 @@
-package x.funny.co;
+package x.funny.co.model;
+
+import x.funny.co.view.SwingUserInterfaceException;
 
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-public final class DifferenceUtils {
-    private DifferenceUtils() {
-    }
+public class DefaultDiffFinder extends DiffFinder {
 
-    enum DifferenceType {
-        INSERTION, REMOVAL, EQUALITY
-    }
-
-    static class Difference {
-        final DifferenceType type;
-        String text;
-
-        public Difference(DifferenceType type, String text) {
-            this.type = type;
-            this.text = text;
-        }
-    }
-
-    public static LinkedList<Difference> computeDifferenceBetween(String left, String right) {
+    @Override
+    public LinkedList<DiffFinder.Difference> computeDifferenceBetween(String left, String right) {
         if (left == null || right == null) {
             throw new SwingUserInterfaceException("File content must not be null");
         }
 
-        LinkedList<Difference> diffs;
-        if (left.equals(right)) {
-            diffs = new LinkedList<>();
-            if (!left.isEmpty()) {
-                diffs.add(new Difference(DifferenceType.EQUALITY, left));
-            }
-            return new LinkedList<>();
+        LinkedList<Difference> list = fastCheck(left, right);
+        if (!list.isEmpty()) {
+            return list;
         }
-        int greatestCommonLength = findGCP(left, right);
-        String greatestCommonPrefix = left.substring(0, greatestCommonLength);
-        left = left.substring(greatestCommonLength);
-        right = right.substring(greatestCommonLength);
 
-        greatestCommonLength = findGCS(left, right);
-        String greatestCommonSuffix = left.substring(left.length() - greatestCommonLength);
-        left = left.substring(0, left.length() - greatestCommonLength);
-        right = right.substring(0, right.length() - greatestCommonLength);
+        int gcp = findGCP(left, right);
+        String greatestCommonPrefix = left.substring(0, gcp);
+        left = left.substring(gcp);
+        right = right.substring(gcp);
 
-        diffs = findDifference(left, right);
+        int gcs = findGCS(left, right);
+        String greatestCommonSuffix = left.substring(left.length() - gcs);
+        left = left.substring(0, left.length() - gcs);
+        right = right.substring(0, right.length() - gcs);
+
+        LinkedList<Difference> diffs = findDifference(left, right);
 
         if (greatestCommonPrefix.length() != 0) {
             diffs.addFirst(new Difference(DifferenceType.EQUALITY, greatestCommonPrefix));
@@ -57,7 +41,18 @@ public final class DifferenceUtils {
         return diffs;
     }
 
-    private static void mergeDifferences(LinkedList<Difference> diffs) {
+    private LinkedList<DiffFinder.Difference> fastCheck(String left, String right) {
+        LinkedList<DiffFinder.Difference> diffs = new LinkedList<>();
+        if (left.equals(right) && !left.isEmpty()) {
+            diffs.add(new Difference(DifferenceType.EQUALITY, left));
+        }
+        return diffs;
+    }
+
+    @Override
+    public void mergeDifferences(LinkedList<Difference> diffs) {
+        DifferenceContext context = new DifferenceContext();
+        context.differences = diffs;
         diffs.add(new Difference(DifferenceType.EQUALITY, ""));
         ListIterator<Difference> traverser = diffs.listIterator();
         int removals = 0, insertions = 0;
@@ -66,19 +61,26 @@ public final class DifferenceUtils {
         Difference current = traverser.next();
         Difference prevEquality = null;
         int len;
+
+        context.current = current;
+        context.prevEquality = prevEquality;
+
         while (current != null) {
             switch (current.type) {
                 case INSERTION:
+                    insertionCase(context);
                     insertions++;
                     textInsert += current.text;
                     prevEquality = null;
                     break;
                 case REMOVAL:
+                    removalCase(context);
                     removals++;
                     textDelete += current.text;
                     prevEquality = null;
                     break;
                 case EQUALITY:
+                    equalityCase(context);
                     if (removals + insertions > 1) {
                         boolean bothTypes = removals != 0 && insertions != 0;
                         traverser.previous();
@@ -132,8 +134,9 @@ public final class DifferenceUtils {
                     insertions = 0;
                     removals = 0;
                     textDelete = "";
-                textInsert = "";
+                    textInsert = "";
                     prevEquality = current;
+                    context.prevEquality = prevEquality;
                     break;
             }
             current = traverser.hasNext() ? traverser.next() : null;
@@ -203,7 +206,7 @@ public final class DifferenceUtils {
         return n;
     }
 
-    private static LinkedList<Difference> findDifference(String left, String right) {
+    private LinkedList<Difference> findDifference(String left, String right) {
         LinkedList<Difference> diffs = new LinkedList<>();
         if (left.length() == 0) {
             diffs.add(new Difference(DifferenceType.INSERTION, right));
@@ -231,7 +234,7 @@ public final class DifferenceUtils {
         return bisect(left, right);
     }
 
-    private static LinkedList<Difference> bisect(String left, String right) {
+    private LinkedList<Difference> bisect(String left, String right) {
         int l = left.length();
         int r = right.length();
         int maxD = (l + r + 1) / 2;
@@ -315,7 +318,8 @@ public final class DifferenceUtils {
         diffs.add(new Difference(DifferenceType.INSERTION, right));
         return diffs;
     }
-    private static LinkedList<Difference> split(String left, String right, int x, int y) {
+
+    private LinkedList<Difference> split(String left, String right, int x, int y) {
         LinkedList<Difference> differences = computeDifferenceBetween(left.substring(0, x), right.substring(0, y));
                 differences.addAll(computeDifferenceBetween(left.substring(x), right.substring(y)));
         return differences;
