@@ -1,6 +1,8 @@
 package x.funny.co.model;
 
 import org.junit.jupiter.api.Test;
+import x.funny.co.controller.Blob;
+import x.funny.co.controller.DifferenceBetweenBlobs;
 
 import javax.swing.*;
 import java.awt.*;

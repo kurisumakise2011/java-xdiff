@@ -3,7 +3,6 @@ package x.funny.co.controller;
 import org.junit.jupiter.api.Test;
 import x.funny.co.Main;
 import x.funny.co.model.DiffFinder;
-import x.funny.co.model.DifferenceBetweenBlobs;
 import x.funny.co.model.SplitSolutionDiffFinder;
 import x.funny.co.view.DifferenceSwingComponent;
 

@@ -1,6 +1,10 @@
-package x.funny.co.model;
+package x.funny.co.controller;
 
 import x.funny.co.Logger1;
+import x.funny.co.model.ApplicationLogicRuntimeException;
+import x.funny.co.model.DiffFinder;
+import x.funny.co.model.Difference;
+import x.funny.co.model.DifferenceType;
 
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
@@ -94,24 +98,24 @@ public class DifferenceBetweenBlobs {
         addBackgroundStyles(leftDoc);
         addBackgroundStyles(rightDoc);
 
-        LinkedList<SplitSolutionDiffFinder.Difference> result = diffFinder.computeDifferenceBetween(left, right);
+        LinkedList<Difference> result = diffFinder.computeDifferenceBetween(left, right);
 
-        for (SplitSolutionDiffFinder.Difference diff : result) {
-            if (diff.type == SplitSolutionDiffFinder.DifferenceType.INSERTION) {
+        for (Difference diff : result) {
+            if (diff.getType() == DifferenceType.INSERTION) {
                 int len = rightDoc.getLength();
-                int pos = checkLine(rightDoc, diff.text, INSERTION_LINE, INSERTION);
-                alignDocument(rightDoc, leftDoc, len, diff.text.length());
+                int pos = checkLine(rightDoc, diff.getText(), INSERTION_LINE, INSERTION);
+                alignDocument(rightDoc, leftDoc, len, diff.length());
                 this.add((pos + len) / 2);
             }
-            if (diff.type == SplitSolutionDiffFinder.DifferenceType.REMOVAL) {
+            if (diff.getType() == DifferenceType.REMOVAL) {
                 int len = leftDoc.getLength();
-                int pos = checkLine(leftDoc, diff.text, REMOVAL_LINE, REMOVAL);
-                alignDocument(leftDoc, rightDoc, len, diff.text.length());
+                int pos = checkLine(leftDoc, diff.getText(), REMOVAL_LINE, REMOVAL);
+                alignDocument(leftDoc, rightDoc, len, diff.length());
                 this.add((pos + len) / 2);
             }
-            if (diff.type == SplitSolutionDiffFinder.DifferenceType.EQUALITY) {
-                insertText(leftDoc, diff.text, leftDoc.getStyle(EQUALITY));
-                insertText(rightDoc, diff.text, rightDoc.getStyle(EQUALITY));
+            if (diff.getType() == DifferenceType.EQUALITY) {
+                insertText(leftDoc, diff.getText(), leftDoc.getStyle(EQUALITY));
+                insertText(rightDoc, diff.getText(), rightDoc.getStyle(EQUALITY));
             }
         }
 

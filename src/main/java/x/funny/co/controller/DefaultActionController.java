@@ -1,8 +1,6 @@
 package x.funny.co.controller;
 
 import x.funny.co.Logger1;
-import x.funny.co.model.Blob;
-import x.funny.co.model.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;

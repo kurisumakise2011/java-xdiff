@@ -3,7 +3,7 @@ package x.funny.co;
 import x.funny.co.controller.ActionController;
 import x.funny.co.controller.DefaultActionController;
 import x.funny.co.model.SplitSolutionDiffFinder;
-import x.funny.co.model.DifferenceBetweenBlobs;
+import x.funny.co.controller.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;
