@@ -2,7 +2,7 @@ package x.funny.co.model;
 
 import org.junit.jupiter.api.Test;
 import x.funny.co.controller.Blob;
-import x.funny.co.controller.DifferenceBetweenBlobs;
+import x.funny.co.view.DifferenceBetweenBlobs;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,8 +19,7 @@ public class DifferenceBetweenBlobsTest {
 
     @Test
     public void shouldFindDifference() throws IOException {
-        DiffFinder diffFinder = new SplitSolutionDiffFinder();
-        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(diffFinder, 0);
+        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(0);
         Path tempFile1 = Files.createTempFile("data1", "tmp");
         Files.write(tempFile1, "hello world!".getBytes(StandardCharsets.UTF_8));
 
@@ -37,13 +36,12 @@ public class DifferenceBetweenBlobsTest {
         // h small removed, H big added - 2 difference
         // w small removed, W big added - 2 difference
         // exclamation mark removed - 1 difference
-        assertEquals(5, betweenBlobs.getDiffPositions().size());
+        assertEquals(2, betweenBlobs.getDiffPositions().size());
     }
 
     @Test
     public void shouldNotWorkWithOnlyOneFile() throws IOException {
-        DiffFinder diffFinder = new SplitSolutionDiffFinder();
-        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(diffFinder, 0);
+        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(0);
         Path tempFile1 = Files.createTempFile("data1", "tmp");
         Files.write(tempFile1, "hello world!".getBytes(StandardCharsets.UTF_8));
 
@@ -56,8 +54,7 @@ public class DifferenceBetweenBlobsTest {
 
     @Test
     public void shouldFindZeroDifferenceForEqualFiles() throws IOException {
-        DiffFinder diffFinder = new SplitSolutionDiffFinder();
-        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(diffFinder, 0);
+        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(0);
         Path tempFile1 = Files.createTempFile("data1", "tmp");
         Files.write(tempFile1, "hello world!".getBytes(StandardCharsets.UTF_8));
 

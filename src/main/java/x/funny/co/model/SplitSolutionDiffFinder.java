@@ -188,7 +188,7 @@ public class SplitSolutionDiffFinder extends DiffFinder {
             diffs.add(Difference.of(type, longDiff.substring(i + shortDiff.length())));
             return diffs;
         }
-        if (shortDiff.length() == 1) {
+        if (!shortDiff.contains("\n") || !shortDiff.contains(" ")) {
             diffs.addRemoval(left);
             diffs.addInsertion(right);
             return diffs;

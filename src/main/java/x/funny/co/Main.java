@@ -3,7 +3,7 @@ package x.funny.co;
 import x.funny.co.controller.ActionController;
 import x.funny.co.controller.DefaultActionController;
 import x.funny.co.model.SplitSolutionDiffFinder;
-import x.funny.co.controller.DifferenceBetweenBlobs;
+import x.funny.co.view.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;
@@ -35,9 +35,8 @@ public class Main {
     }
 
     private static void predefine() {
-        SplitSolutionDiffFinder diffFinder = new SplitSolutionDiffFinder();
         DifferenceSwingComponent ui = new DifferenceSwingComponent();
-        DifferenceBetweenBlobs model = new DifferenceBetweenBlobs(diffFinder);
+        DifferenceBetweenBlobs model = new DifferenceBetweenBlobs();
 
         ActionController actionController = new DefaultActionController(ui, model);
         actionController.dispatch();

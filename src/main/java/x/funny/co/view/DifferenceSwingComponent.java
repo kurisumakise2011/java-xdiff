@@ -4,6 +4,7 @@ import x.funny.co.Logger1;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.text.DefaultHighlighter;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -35,6 +36,7 @@ public class DifferenceSwingComponent extends JFrame {
             "To close files, click $_c + C\n").replace("$_c", selector).replace("$_s", multiple);
 
     private static final Border labelTopPadding = BorderFactory.createEmptyBorder(screenSize.height / 6, 0, 0, 0);
+    private static final Color selectionColor = Color.decode("#AACEF7");
     private JMenuItem openFiles;
     private JMenuItem closeFiles;
     private JMenuItem about;
@@ -123,7 +125,6 @@ public class DifferenceSwingComponent extends JFrame {
         JScrollPane left = buildDifferencePanel();
         JScrollPane right = buildDifferencePanel();
         JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        main.setResizeWeight(0.5f);
         main.setEnabled(false);
         main.setOneTouchExpandable(false);
         return main;
@@ -142,9 +143,12 @@ public class DifferenceSwingComponent extends JFrame {
         textPane.setText("Content of the file will shown here ... ");
         textPane.setEditable(false);
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        textPane.setSelectionColor(selectionColor);
+        DefaultHighlighter highlighter = (DefaultHighlighter) textPane.getHighlighter();
+        highlighter.setDrawsLayeredHighlights(false);
 
         JScrollPane scrollPane = new JScrollPane(textPane);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setVisible(false);
 

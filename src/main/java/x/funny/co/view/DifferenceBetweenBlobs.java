@@ -1,18 +1,17 @@
-package x.funny.co.controller;
+package x.funny.co.view;
 
 import x.funny.co.Logger1;
+import x.funny.co.controller.Blob;
 import x.funny.co.model.ApplicationLogicRuntimeException;
-import x.funny.co.model.DiffFinder;
 import x.funny.co.model.Difference;
 import x.funny.co.model.DifferenceType;
+import x.funny.co.model.SplitSolutionDiffFinder;
 
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
+import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Document;
-import javax.swing.text.Element;
-import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.Highlighter;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -29,32 +28,43 @@ public class DifferenceBetweenBlobs {
     private static final Logger1 log = Logger1.logger(DifferenceBetweenBlobs.class);
 
     private static final String REMOVAL = "removal";
+    private static final Color REMOVAL_COLOR = Color.decode("#ffcdd1");
     private static final String REMOVAL_LINE = "removing_line";
     private static final String INSERTION_LINE = "inserting_line";
     private static final String INSERTION = "insertion";
+    private static final Color INSERTION_COLOR = Color.decode("#a9f2ab");
     private static final String EQUALITY = "equality";
+    private static final Color REMOVAL_COLOR_LINE = Color.decode("#ffebee");
+    private static final Color INSERTION_COLOR_LINE = Color.decode("#d8fed8");
+    private static final LineHighLighter removalLinePainter = new LineHighLighter(REMOVAL_COLOR, REMOVAL_COLOR_LINE, true);
+    private static final LineHighLighter insertionLinePainter = new LineHighLighter(INSERTION_COLOR, INSERTION_COLOR_LINE, true);
+
+    private static final LineHighLighter removalPainter = new LineHighLighter(REMOVAL_COLOR, REMOVAL_COLOR_LINE, false);
+    private static final LineHighLighter insertionPainter = new LineHighLighter(INSERTION_COLOR, INSERTION_COLOR_LINE, false);
+
     private static final StyledColor[] styles = new StyledColor[]{
-            new StyledColor(INSERTION_LINE, Color.decode("#d8fed8")),
-            new StyledColor(INSERTION, Color.decode("#a9f2ab")),
-            new StyledColor(REMOVAL, Color.decode("#ffcdd1")),
-            new StyledColor(REMOVAL_LINE, Color.decode("#ffebee")),
+            new StyledColor(INSERTION_LINE, INSERTION_COLOR_LINE),
+            new StyledColor(INSERTION, INSERTION_COLOR),
+            new StyledColor(REMOVAL, REMOVAL_COLOR),
+            new StyledColor(REMOVAL_LINE, REMOVAL_COLOR_LINE),
             new StyledColor(EQUALITY, Color.WHITE)
     };
-    private static final Color grey = Color.decode("#f8f9fa");
+
+    private final SplitSolutionDiffFinder diffFinder = new SplitSolutionDiffFinder();
     public static final int MAX_DISTANCE = 500;
     private final int distance;
 
     private Blob left;
     private Blob right;
     private final Deque<Integer> diffPositions = new ConcurrentLinkedDeque<>();
-    private final DiffFinder diffFinder;
+    private final List<LinePosition> lines = new ArrayList<>();
+    private final List<LinePosition> chars = new ArrayList<>();
 
-    public DifferenceBetweenBlobs(DiffFinder diffFinder) {
-        this(diffFinder, MAX_DISTANCE);
+    public DifferenceBetweenBlobs() {
+        this(MAX_DISTANCE);
     }
 
-    public DifferenceBetweenBlobs(DiffFinder diffFinder, int maxDistance) {
-        this.diffFinder = diffFinder;
+    public DifferenceBetweenBlobs(int maxDistance) {
         this.distance = maxDistance;
     }
 
@@ -68,6 +78,8 @@ public class DifferenceBetweenBlobs {
 
     public void clear() {
         diffPositions.clear();
+        lines.clear();
+        chars.clear();
     }
 
     public Deque<Integer> getDiffPositions() {
@@ -90,10 +102,13 @@ public class DifferenceBetweenBlobs {
         String left = readAll(this.left);
         String right = readAll(this.right);
 
+        JTextPane leftContent = this.left.getContent();
+        JTextPane rightContent = this.right.getContent();
+
         StyledDocument leftDoc = new DefaultStyledDocument();
         StyledDocument rightDoc = new DefaultStyledDocument();
-        this.left.getContent().setDocument(leftDoc);
-        this.right.getContent().setDocument(rightDoc);
+        leftContent.setDocument(leftDoc);
+        rightContent.setDocument(rightDoc);
 
         addBackgroundStyles(leftDoc);
         addBackgroundStyles(rightDoc);
@@ -104,82 +119,47 @@ public class DifferenceBetweenBlobs {
             if (diff.getType() == DifferenceType.INSERTION) {
                 int len = rightDoc.getLength();
                 int pos = checkLine(rightDoc, diff.getText(), INSERTION_LINE, INSERTION);
-                alignDocument(rightDoc, leftDoc, len, diff.length());
                 this.add((pos + len) / 2);
+                alignDocument(rightDoc, leftDoc, len, diff.length());
+                chars.add(LinePosition.of(rightContent, len, len + diff.length(), insertionPainter));
             }
             if (diff.getType() == DifferenceType.REMOVAL) {
                 int len = leftDoc.getLength();
                 int pos = checkLine(leftDoc, diff.getText(), REMOVAL_LINE, REMOVAL);
-                alignDocument(leftDoc, rightDoc, len, diff.length());
                 this.add((pos + len) / 2);
+                alignDocument(leftDoc, rightDoc, len, diff.length());
+                chars.add(LinePosition.of(leftContent, len, len + diff.length(), removalPainter));
             }
             if (diff.getType() == DifferenceType.EQUALITY) {
-                insertText(leftDoc, diff.getText(), leftDoc.getStyle(EQUALITY));
-                insertText(rightDoc, diff.getText(), rightDoc.getStyle(EQUALITY));
+                insertText(leftDoc, diff.getText());
+                insertText(rightDoc, diff.getText());
             }
         }
 
-        int capacity = Math.max(leftDoc.getLength(), rightDoc.getLength());
-        boolean isLeftBigger = capacity == leftDoc.getLength();
-        if (isLeftBigger) {
-            fill(rightDoc, leftDoc,capacity - rightDoc.getLength());
-        } else {
-            fill(leftDoc, rightDoc,capacity - leftDoc.getLength());
+        leftContent.getHighlighter().removeAllHighlights();
+        rightContent.getHighlighter().removeAllHighlights();
+        for (LinePosition line : lines) {
+            highlight(line.getPane().getHighlighter(), line.getFrom(), line.getTo(), line.getPainter());
         }
+
+        for (LinePosition line : chars) {
+            highlight(line.getPane().getHighlighter(), line.getFrom(), line.getTo(), line.getPainter());
+        }
+
         getPosition(this.left);
         this.left.getContent().grabFocus();
     }
 
-    private void fill(StyledDocument target, StyledDocument source, int count) {
-        try {
-            StringBuilder sb = new StringBuilder();
-            String text = source.getText(target.getLength(), count);
-            for (int i = 0; i < text.length(); i++) {
-                if (text.charAt(i) == '\n') {
-                    sb.append('\n');
-                } else {
-                    sb.append('\u0000');
-                }
-            }
-            target.insertString(target.getLength(), sb.toString(), null);
-        } catch (BadLocationException e) {
-            throw new ApplicationLogicRuntimeException(e.getMessage());
-        }
-    }
-
-    private static class Position {
-        private int start;
-        private int end;
-        private AttributeSet attributes;
-    }
-
     private void alignDocument(StyledDocument source, StyledDocument target, int from, int len) {
         try {
+            StringBuilder sb = new StringBuilder();
             int startLine = findStartLine(target);
             int targetLen = target.getLength() - startLine;
             String after = getText(target, startLine, targetLen);
-            Element paragraph = target.getParagraphElement(target.getLength());
-            List<Position> positions = new ArrayList<>();
-            if (paragraph instanceof AbstractDocument.BranchElement) {
-                var element = (AbstractDocument.BranchElement) paragraph;
-                var iterator = element.children().asIterator();
-                while (iterator.hasNext()) {
-                    var node = iterator.next();
-                    if (node instanceof AbstractDocument.LeafElement) {
-                        var child = (AbstractDocument.LeafElement) node;
-                        Position position = new Position();
-                        position.start = child.getStartOffset();
-                        position.end = child.getEndOffset();
-                        position.attributes = child.getAttributes();
-                        positions.add(position);
-                    }
-                }
-            }
             target.remove(startLine, targetLen);
 
             String text = source.getText(from, len);
             text = text.replace(after, "");
-            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < text.length(); i++) {
                 if (text.charAt(i) == '\n') {
                     sb.append('\n');
@@ -187,15 +167,9 @@ public class DifferenceBetweenBlobs {
                     sb.append('\u0000');
                 }
             }
-            SimpleAttributeSet attributeSet = new SimpleAttributeSet();
-            StyleConstants.setBackground(attributeSet, grey);
-            target.insertString(startLine, sb.toString(), attributeSet);
-            int l = sb.length();
+            target.insertString(startLine, sb.toString(), null);
             if (!after.isEmpty()) {
-                target.insertString(target.getLength(), after, paragraph.getAttributes());
-                for (Position position : positions) {
-                    target.setCharacterAttributes(l + position.start, position.end - position.start, position.attributes, false);
-                }
+                target.insertString(target.getLength(), after, null);
             }
         } catch (BadLocationException e) {
             log.debug("invalid location", e);
@@ -227,25 +201,38 @@ public class DifferenceBetweenBlobs {
         try {
             return target.getText(offset, length);
         } catch (BadLocationException e) {
+            log.debug("invalid location", e);
             throw new ApplicationLogicRuntimeException(e.getMessage());
         }
     }
 
     private int checkLine(StyledDocument doc, String text, String lineColor, String diffColor) {
         int first = doc.getLength();
-        int pos = insertText(doc, text, doc.getStyle(diffColor));
-        Element p = doc.getParagraphElement(first);
-        highlightLine(p, first, pos, doc.getStyle(lineColor));
+        int pos = insertText(doc, text);
+        JTextPane pane = getPane(diffColor);
+        highlightLine(first, pos, lineColor, pane);
         return pos;
     }
 
-    private void highlightLine(Element paragraph, int exceptFrom, int exceptTo, Style color) {
-        int start = paragraph.getStartOffset();
-        int end = paragraph.getEndOffset();
-        StyledDocument doc = (StyledDocument) paragraph.getDocument();
+    private Highlighter.HighlightPainter resolveColor(String color) {
+        return INSERTION_LINE.equals(color) ? insertionLinePainter : removalLinePainter;
+    }
 
-        doc.setCharacterAttributes(start, exceptFrom - start, color, false);
-        doc.setCharacterAttributes(exceptTo, end - exceptTo, color, false);
+    private JTextPane getPane(String diffColor) {
+        return REMOVAL.equals(diffColor) ? left.getContent() : right.getContent();
+    }
+
+    private void highlightLine(int start, int end, String color, JTextPane pane) {
+        lines.add(LinePosition.of(pane, start, end, resolveColor(color)));
+    }
+
+    private void highlight(Highlighter highlighter, int start, int end, Highlighter.HighlightPainter painter) {
+        try {
+            highlighter.addHighlight(start, end, painter);
+        } catch (BadLocationException e) {
+            log.debug("invalid location", e);
+            throw new ApplicationLogicRuntimeException(e);
+        }
     }
 
     private void addBackgroundStyles(StyledDocument document) {
@@ -255,9 +242,9 @@ public class DifferenceBetweenBlobs {
         }
     }
 
-    private int insertText(StyledDocument doc, String text, Style attr) {
+    private int insertText(StyledDocument doc, String text) {
         try {
-            doc.insertString(doc.getLength(), text, attr);
+            doc.insertString(doc.getLength(), text, null);
             return doc.getLength();
         } catch (BadLocationException e) {
             log.debug("invalid location", e);

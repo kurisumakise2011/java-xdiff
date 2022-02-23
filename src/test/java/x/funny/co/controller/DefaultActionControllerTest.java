@@ -2,8 +2,7 @@ package x.funny.co.controller;
 
 import org.junit.jupiter.api.Test;
 import x.funny.co.Main;
-import x.funny.co.model.DiffFinder;
-import x.funny.co.model.SplitSolutionDiffFinder;
+import x.funny.co.view.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;
@@ -27,9 +26,8 @@ public class DefaultActionControllerTest {
             System.setProperty("apple.laf.useScreenMenuBar", "true");
             UIManager.setLookAndFeel("com.apple.laf.AquaLookAndFeel");
         }
-        DiffFinder diffFinder = new SplitSolutionDiffFinder();
         DifferenceSwingComponent view = new DifferenceSwingComponent();
-        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs(diffFinder);
+        DifferenceBetweenBlobs betweenBlobs = new DifferenceBetweenBlobs();
         DefaultActionController controller = new DefaultActionController(view, betweenBlobs, getClass().getResource("/").getPath());
         view.setPreferredSize(new Dimension(1440, 900));
 

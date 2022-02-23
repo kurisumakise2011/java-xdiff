@@ -1,6 +1,7 @@
 package x.funny.co.controller;
 
 import x.funny.co.Logger1;
+import x.funny.co.view.DifferenceBetweenBlobs;
 import x.funny.co.view.DifferenceSwingComponent;
 
 import javax.swing.*;
@@ -159,11 +160,13 @@ public class DefaultActionController implements ActionController {
             model.findDiff();
             JScrollPane left = (JScrollPane) pane.getLeftComponent();
             JScrollPane right = (JScrollPane) pane.getRightComponent();
-            view.synchronizedScroll(left, right);
+            pane.setResizeWeight(.5d);
             right.setVisible(true);
             left.setVisible(true);
+            view.synchronizedScroll(left, right);
             view.validate();
             view.repaint();
+
             log.info("difference found, repainted and validated");
         }
     }
